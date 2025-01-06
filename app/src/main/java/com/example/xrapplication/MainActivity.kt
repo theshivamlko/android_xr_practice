@@ -104,6 +104,40 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         "Center Panel"
                     )
                 }
+                Orbiter(
+                    position = OrbiterEdge.Top,
+                    offset = EdgeOffset.inner(offset = 20.dp),
+                    alignment = Alignment.End,
+                    shape = SpatialRoundedCornerShape(CornerSize(28.dp))
+                ) {
+                    HomeSpaceModeIconButton(
+                        onClick = onRequestHomeSpaceMode,
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
+
+                Orbiter(
+                    position = OrbiterEdge.Top,
+                    offset = EdgeOffset.inner(offset = 20.dp),
+                    alignment = Alignment.CenterHorizontally,
+                    shape = SpatialRoundedCornerShape(CornerSize(28.dp))
+                ) {
+
+                    Row {
+                        Button(onClick = {
+
+                        }) {
+                            Text(text = "Action 1")
+                        }
+
+                        Button(onClick = {
+
+                        }) {
+                            Text(text = "Action 2")
+                        }
+
+                    }
+                }
 
             }
 
