@@ -2,7 +2,6 @@ package com.example.xrapplication
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -39,10 +38,13 @@ import androidx.xr.compose.spatial.OrbiterEdge
 import androidx.xr.compose.spatial.SpatialDialog
 import androidx.xr.compose.spatial.Subspace
 import androidx.xr.compose.subspace.SpatialPanel
+import androidx.xr.compose.subspace.SpatialRow
 import androidx.xr.compose.subspace.layout.SpatialRoundedCornerShape
 import androidx.xr.compose.subspace.layout.SubspaceModifier
+import androidx.xr.compose.subspace.layout.fillMaxWidth
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.movable
+import androidx.xr.compose.subspace.layout.padding
 import androidx.xr.compose.subspace.layout.resizable
 import androidx.xr.compose.subspace.layout.width
 import com.example.xrapplication.ui.theme.XRApplicationTheme
@@ -54,22 +56,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-
-        Log.d("MainActivity","onCreate ")
         setContent {
             XRApplicationTheme {
                 val session = LocalSession.current
-                Log.d("MainActivity","onCreate "+LocalSpatialCapabilities.current.isSpatialUiEnabled)
                 if (LocalSpatialCapabilities.current.isSpatialUiEnabled) {
                     Subspace {
-                        MySpatialContent(onRequestHomeSpaceMode = {
-                            println("requestHomeSpaceMode")
-                            session?.requestHomeSpaceMode() })
+                        MySpatialContent(onRequestHomeSpaceMode = { session?.requestHomeSpaceMode() })
                     }
                 } else {
-                    My2DContent(onRequestFullSpaceMode = {
-                        println("requestFullSpaceMode")
-                        session?.requestFullSpaceMode() })
+                    My2DContent(onRequestFullSpaceMode = { session?.requestFullSpaceMode() })
                 }
             }
         }
@@ -79,25 +74,61 @@ class MainActivity : ComponentActivity() {
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
-    SpatialPanel(SubspaceModifier.width(1280.dp).height(800.dp).resizable().movable()) {
-        Surface {
+    SpatialRow(curveRadius = 0.dp) {
+
+        SpatialPanel(
+            SubspaceModifier
+                .width(384.dp)
+                .height(592.dp)
+
+        ) {
+            Surface {
             MainContent(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(48.dp),"Spatial"
+                    .padding(48.dp),
+                "Left Panel"
             )
+            }
+
         }
-        Orbiter(
-            position = OrbiterEdge.Top,
-            offset = EdgeOffset.inner(offset = 20.dp),
-            alignment = Alignment.End,
-            shape = SpatialRoundedCornerShape(CornerSize(28.dp))
+
+
+            SpatialPanel(SubspaceModifier.width(1280.dp).height(800.dp).resizable().movable())
+            {
+                Surface {
+                    MainContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(48.dp),
+                        "Center Panel"
+                    )
+                }
+
+            }
+
+
+
+        SpatialPanel(
+            SubspaceModifier
+                .width(384.dp)
+                .height(592.dp)
+
         ) {
-            HomeSpaceModeIconButton(
-                onClick = onRequestHomeSpaceMode,
-                modifier = Modifier.size(56.dp)
-            )
+            Surface {
+                MainContent(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(48.dp),
+                    "Right Panel"
+                )
+
         }
+
+        }
+
+
+
     }
 }
 
@@ -109,22 +140,22 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            MainContent(modifier = Modifier.padding(48.dp),"Mobile")
-           if (LocalHasXrSpatialFeature.current) {
+            MainContent(modifier = Modifier.padding(48.dp), "2DContent")
+            if (LocalHasXrSpatialFeature.current) {
                 FullSpaceModeIconButton(
                     onClick = onRequestFullSpaceMode,
                     modifier = Modifier.padding(32.dp)
                 )
-          }
+            }
         }
     }
 }
 
 @Composable
-fun MainContent(modifier: Modifier = Modifier,title:String) {
+fun MainContent(modifier: Modifier = Modifier, title: String) {
     Column {
 
-    Text(text = title, modifier = modifier)
+        Text(text = title, modifier = modifier, color = Color.White)
 
         Button(onClick = {
 
@@ -132,17 +163,17 @@ fun MainContent(modifier: Modifier = Modifier,title:String) {
             Text(text = "MyButton")
         }
 
-        SpatialDialog(
+        /* SpatialDialog(
 
-            onDismissRequest = {
+             onDismissRequest = {
 
-            }
-        ) {
-            Box(modifier = Modifier.background(color = Color.Red).padding(20.dp)) {
-                Text(text = "Dialog Text", modifier = modifier)
-            }
+             }
+         ) {
+             Box(modifier = Modifier.background(color = Color.Red).padding(20.dp)) {
+                 Text(text = "Dialog Text", modifier = modifier)
+             }
 
-        }
+         }*/
     }
 
 }
