@@ -133,7 +133,7 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
             SubspaceModifier
                 .width(384.dp)
                 .height(592.dp)
-
+                .resizable().movable()
         ) {
             Surface {
                 MainContent(
@@ -205,7 +205,7 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
             SubspaceModifier
                 .width(384.dp)
                 .height(592.dp)
-
+                .resizable().movable()
         ) {
             Surface {
                 MainContent(
@@ -261,13 +261,15 @@ fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) 
                 try {
                     val model = withContext(Dispatchers.Main) {
                         Log.d("MainActivity","2")
-                        session.createGltfResourceAsync("models/SciFiHelmet.gltf")
+                        session.createGltfResourceAsync("models/hero_baymax_-_fortnite_skin.glb")
                     }
                     Log.d("MainActivity","3")
                     val gltfEntity = session.createGltfEntity(model.get())
+                    val newPosition = Vector3(0f, 0f, -2f)
                     val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
                     gltfEntity.setHidden(false)
                     gltfEntity.setScale(2f)
+                    gltfEntity.setPose(Pose(newPosition, newOrientation))
                     gltfEntity.addChild(gltfEntity)
                     Log.d("MainActivity","4")
                 } catch (e: Exception) {
