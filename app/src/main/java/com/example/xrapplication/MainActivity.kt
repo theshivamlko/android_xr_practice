@@ -1,13 +1,16 @@
 package com.example.xrapplication
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -118,6 +121,12 @@ class MainActivity : ComponentActivity() {
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+    }
+
     SpatialRow(curveRadius = 0.dp) {
 
         SpatialPanel(
@@ -171,6 +180,9 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
 
                 Row {
                     Button(onClick = {
+
+                        // ask storage permission
+                        launcher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
                     }) {
                         Text(text = "Action 1")
@@ -249,7 +261,7 @@ fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) 
                 try {
                     val model = withContext(Dispatchers.Main) {
                         Log.d("MainActivity","2")
-                        session.createGltfResourceAsync("models/lieutenantHead/lieutenantHead.gltf")
+                        session.createGltfResourceAsync("models/SciFiHelmet.gltf")
                     }
                     Log.d("MainActivity","3")
                     val gltfEntity = session.createGltfEntity(model.get())
@@ -267,6 +279,7 @@ fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) 
             Text(text = "MyButton1")
         }
         Button(onClick = {
+            Log.d("MainActivity","1")
 
             val THREED_MODEL_URL = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF/FlightHelmet.gltf"
             val MIME_TYPE = "model/gltf-binary"
@@ -281,6 +294,24 @@ fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) 
 
         }) {
             Text(text = "Scene Viewer")
+        }
+
+
+        Button(onClick = {
+            Log.d("MainActivity","1")
+
+            val preferenceResult = session.spatialEnvironment.setPassthroughOpacityPreference(0.8f)
+
+            if (preferenceResult ==  SpatialEnvironment.SetPassthroughOpacityPreferenceChangeApplied()) {
+                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangeApplied")
+
+            } else if (preferenceResult == SpatialEnvironment.SetPassthroughOpacityPreferenceChangePending()) {
+                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangePending")
+
+            }
+
+        }) {
+            Text(text = "Passthrough")
         }
 
 
