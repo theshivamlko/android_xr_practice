@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.SnapPosition.Center.position
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,15 +30,21 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.xr.compose.platform.LocalHasXrSpatialFeature
@@ -50,14 +57,19 @@ import androidx.xr.compose.spatial.SpatialDialog
 import androidx.xr.compose.spatial.Subspace
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.SpatialRow
+import androidx.xr.compose.subspace.Volume
 import androidx.xr.compose.subspace.layout.SpatialRoundedCornerShape
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.fillMaxWidth
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.movable
+import androidx.xr.compose.subspace.layout.offset
+import androidx.xr.compose.subspace.layout.onGloballyPositioned
 import androidx.xr.compose.subspace.layout.padding
 import androidx.xr.compose.subspace.layout.resizable
+import androidx.xr.compose.subspace.layout.scale
 import androidx.xr.compose.subspace.layout.width
+import androidx.xr.compose.unit.IntVolumeSize
 import androidx.xr.runtime.math.Pose
 import androidx.xr.runtime.math.Quaternion
 import androidx.xr.runtime.math.Vector3
@@ -121,6 +133,7 @@ class MainActivity : ComponentActivity() {
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
+    var panelSize: IntSize by remember { mutableStateOf(IntSize.Zero) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -134,9 +147,13 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
                 .width(384.dp)
                 .height(592.dp)
                 .resizable().movable()
+                .onGloballyPositioned { coordinates ->
+                  //  panelSize = coordinates.size
+                    Log.d("SpatialPanel", "Width: ${coordinates.size.width}, Height: ${coordinates.size.height}")
+                }
         ) {
             Surface {
-                MainContent(
+                SideContent(
                     session = session,
                     modifier = Modifier
                         .fillMaxSize()
@@ -208,7 +225,7 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
                 .resizable().movable()
         ) {
             Surface {
-                MainContent(
+                SideContent(
                     session = session,
                     modifier = Modifier
                         .fillMaxSize()
@@ -316,8 +333,126 @@ fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) 
             Text(text = "Passthrough")
         }
 
+        ObjectInAVolume(session,true)
 
     }
+
+}
+
+@Composable
+fun SideContent(session: Session, modifier: Modifier = Modifier, title: String) {
+    var context= LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    Column() {
+
+        Box(modifier = Modifier.height(100.dp).width(100.dp)) {
+
+        Text(text = title, modifier = modifier, color = Color.White)
+        }
+
+        Button(onClick = {
+
+            Log.d("MainActivity","1")
+            coroutineScope.launch {
+                try {
+                    val model = withContext(Dispatchers.Main) {
+                        Log.d("MainActivity","2")
+                        session.createGltfResourceAsync("models/hero_baymax_-_fortnite_skin.glb")
+                    }
+                    Log.d("MainActivity","3")
+                    val gltfEntity = session.createGltfEntity(model.get())
+                    val newPosition = Vector3(0f, 0f, -2f)
+                    val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
+                    gltfEntity.setHidden(false)
+                    gltfEntity.setScale(2f)
+                    gltfEntity.setPose(Pose(newPosition, newOrientation))
+                    gltfEntity.addChild(gltfEntity)
+                    Log.d("MainActivity","4")
+                } catch (e: Exception) {
+                    Log.e("MainContent", "Error loading GLTF model", e)
+                }
+            }
+
+        }) {
+            Text(text = "MyButton1")
+        }
+        Button(onClick = {
+            Log.d("MainActivity","1")
+
+            val THREED_MODEL_URL = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF/FlightHelmet.gltf"
+            val MIME_TYPE = "model/gltf-binary"
+            val sceneViewerIntent = Intent(Intent.ACTION_VIEW)
+            val intentUri =
+                Uri.parse("https://arvr.google.com/scene-viewer/1.2")
+                    .buildUpon()
+                    .appendQueryParameter("file", THREED_MODEL_URL)
+                    .build()
+            sceneViewerIntent.setDataAndType(intentUri, MIME_TYPE)
+            context.startActivity(sceneViewerIntent)
+
+        }) {
+            Text(text = "Scene Viewer")
+        }
+
+
+        Button(onClick = {
+            Log.d("MainActivity","1")
+
+            val preferenceResult = session.spatialEnvironment.setPassthroughOpacityPreference(0.8f)
+
+            if (preferenceResult ==  SpatialEnvironment.SetPassthroughOpacityPreferenceChangeApplied()) {
+                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangeApplied")
+
+            } else if (preferenceResult == SpatialEnvironment.SetPassthroughOpacityPreferenceChangePending()) {
+                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangePending")
+
+            }
+
+        }) {
+            Text(text = "Passthrough")
+        }
+
+
+    }
+
+}
+
+@Composable
+fun ObjectInAVolume(session: Session,show3DObject: Boolean) {
+    val xrCoreSession = checkNotNull(LocalSession.current)
+    val scope = rememberCoroutineScope()
+
+        Subspace {
+            Volume(
+                modifier = SubspaceModifier
+                    .offset(100.dp, 100.dp, 100.dp)
+                    .scale(1.2f) // Scale to 120% of the size
+
+            ) { parent ->
+                scope.launch {
+                    try {
+
+                            Log.d("MainActivity","2")
+                        xrCoreSession.createGltfResourceAsync("models/glTF/FlightHelmet.gltf").let {
+                                val model=it.get();
+                                Log.d("MainActivity","3")
+                                val gltfEntity = xrCoreSession.createGltfEntity(model)
+                                val newPosition = Vector3(0f, 0f, -2f)
+                                val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
+                                gltfEntity.setHidden(false)
+                                gltfEntity.setScale(2f)
+                                gltfEntity.setPose(Pose(newPosition, newOrientation))
+                                gltfEntity.addChild(gltfEntity)
+                                Log.d("MainActivity","4")
+                            }
+
+
+                    } catch (e: Exception) {
+                        Log.e("MainContent", "Error loading GLTF model", e)
+                    }
+                }
+            }
+        }
 
 }
 
