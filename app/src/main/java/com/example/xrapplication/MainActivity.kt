@@ -2,6 +2,7 @@ package com.example.xrapplication
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -27,6 +28,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,10 +41,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.IntSize
@@ -73,12 +78,24 @@ import androidx.xr.compose.unit.IntVolumeSize
 import androidx.xr.runtime.math.Pose
 import androidx.xr.runtime.math.Quaternion
 import androidx.xr.runtime.math.Vector3
+import androidx.xr.scenecore.AnchorPlacement
+import androidx.xr.scenecore.Dimensions
+import androidx.xr.scenecore.Entity
+import androidx.xr.scenecore.InputEvent
+import androidx.xr.scenecore.JxrPlatformAdapter.SpatialCapabilities
+import androidx.xr.scenecore.OnSpaceUpdatedListener
+import androidx.xr.scenecore.PermissionHelper
+import androidx.xr.scenecore.PlaneSemantic
+import androidx.xr.scenecore.PlaneType
+import androidx.xr.scenecore.ResizeListener
 import androidx.xr.scenecore.Session
 import androidx.xr.scenecore.SpatialEnvironment
+import androidx.xr.scenecore.SpatialEnvironment.SpatialEnvironmentPreference
 import com.example.xrapplication.ui.theme.XRApplicationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
 
@@ -128,6 +145,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+
 }
 
 @SuppressLint("RestrictedApi")
@@ -147,13 +166,16 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
                 .width(384.dp)
                 .height(592.dp)
                 .resizable().movable()
-                .onGloballyPositioned { coordinates ->
-                  //  panelSize = coordinates.size
-                    Log.d("SpatialPanel", "Width: ${coordinates.size.width}, Height: ${coordinates.size.height}")
-                }
+               /* .onGloballyPositioned { coordinates ->
+                    //  panelSize = coordinates.size
+                    Log.d(
+                        "SpatialPanel",
+                        "Width: ${coordinates.size.width}, Height: ${coordinates.size.height}"
+                    )
+                }*/
         ) {
             Surface {
-                SideContent(
+                LeftContent(
                     session = session,
                     modifier = Modifier
                         .fillMaxSize()
@@ -165,9 +187,12 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
         }
 
 
+
         SpatialPanel(SubspaceModifier.width(1280.dp).height(800.dp).resizable().movable())
         {
+
             Surface {
+            //    MyNavigationRail()
                 MainContent(
                     session = session,
                     modifier = Modifier
@@ -225,7 +250,7 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
                 .resizable().movable()
         ) {
             Surface {
-                SideContent(
+                RightContent(
                     session = session,
                     modifier = Modifier
                         .fillMaxSize()
@@ -244,6 +269,12 @@ fun MySpatialContent(session: Session, onRequestHomeSpaceMode: () -> Unit) {
 @SuppressLint("RestrictedApi")
 @Composable
 fun My2DContent(session: Session, onRequestFullSpaceMode: () -> Unit) {
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+      //  permissionGranted.value = isGranted
+    }
     Surface {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -262,45 +293,100 @@ fun My2DContent(session: Session, onRequestFullSpaceMode: () -> Unit) {
 
 @Composable
 fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) {
-    var context= LocalContext.current
+    var context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    Column() {
+    Column  {
 
-        Box(modifier = Modifier.height(100.dp).width(100.dp)) {
+        Box(modifier = Modifier
+            .height(100.dp)
+            .width(100.dp)) {
 
-        Text(text = title, modifier = modifier, color = Color.White)
+            Text(text = title, modifier = modifier, color = Color.White)
         }
 
         Button(onClick = {
 
-            Log.d("MainActivity","1")
+            Log.d("MainActivity", "1")
             coroutineScope.launch {
                 try {
                     val model = withContext(Dispatchers.Main) {
-                        Log.d("MainActivity","2")
-                        session.createGltfResourceAsync("models/hero_baymax_-_fortnite_skin.glb")
+                        Log.d("MainActivity", "2")
+                        session.createGltfResourceAsync("models/military_combat_specialist_character_model.glb")
                     }
-                    Log.d("MainActivity","3")
-                    val gltfEntity = session.createGltfEntity(model.get())
-                    val newPosition = Vector3(0f, 0f, -2f)
-                    val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
-                    gltfEntity.setHidden(false)
-                    gltfEntity.setScale(2f)
-                    gltfEntity.setPose(Pose(newPosition, newOrientation))
-                    gltfEntity.addChild(gltfEntity)
-                    Log.d("MainActivity","4")
+                    val exir = withContext(Dispatchers.Main) {
+                        Log.d("MainActivity", "22")
+                      session.createExrImageResource("models/MtTamWest.exr")
+                    }
+                    session.spatialEnvironment.addOnSpatialEnvironmentChangedListener {
+                        Log.d("MainActivity", "onSpatialEnvironmentChanged")
+                    }
+
+                    Log.d("MainActivity", "3")
+                    Log.d("MainActivity", model.get().toString())
+                        val gltfEntity = session.createGltfEntity(model.get())
+                    val spatialEnvironmentPreference = SpatialEnvironmentPreference(exir, model.get())
+
+                    val preferenceResult = session.spatialEnvironment.setSpatialEnvironmentPreference(spatialEnvironmentPreference)
+
+
+
+                    //     val newPosition = Vector3(0f, 0f, -2f)
+                    //    val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
+                        gltfEntity.setHidden(false)
+                      //  gltfEntity.setScale(2f)
+                     //   gltfEntity.setPose(Pose(newPosition, newOrientation))
+                        gltfEntity.addChild(gltfEntity)
+                        Log.d("MainActivity", "4")
+                        Log.d("MainActivity", gltfEntity.isHidden().toString())
+                        Log.d("MainActivity", "getWorldSpaceScale")
+                        Log.d("MainActivity", gltfEntity.getWorldSpaceScale().toString())
+
+                      /*  val anchorPlacement = AnchorPlacement.createForPlanes(
+                            planeTypeFilter = setOf(PlaneSemantic.FLOOR, PlaneSemantic.TABLE),
+                            planeSemanticFilter = setOf(PlaneType.VERTICAL)
+                        )
+
+                        val movableComponent = session.createMovableComponent(
+                            systemMovable = false,
+                            scaleInZ = false,
+                            anchorPlacement = setOf(anchorPlacement)
+                        )
+                        gltfEntity.addComponent(movableComponent)
+                        val resizableComponent = session.createResizableComponent()
+                        resizableComponent.minimumSize = Dimensions(177f, 100f, 1f)
+                        resizableComponent.fixedAspectRatio = 16f / 9f //Specify a 16:9 aspect ratio
+                        gltfEntity.addComponent(resizableComponent)
+*/
+
+                        val executor by lazy { Executors.newSingleThreadExecutor() }
+                        val interactableComponent = session.createInteractableComponent(executor) {
+                            //when the user disengages with the entity with their hands
+                            if (it.source == InputEvent.SOURCE_HANDS && it.action == InputEvent.ACTION_UP) {
+                                // increase size with right hand and decrease with left
+                                if (it.pointerType == InputEvent.POINTER_TYPE_RIGHT) {
+                                    gltfEntity.setScale(1.5f)
+                                } else if (it.pointerType == InputEvent.POINTER_TYPE_LEFT) {
+                                    gltfEntity.setScale(0.5f)
+                                }
+                            }
+                        }
+                        gltfEntity.addComponent(interactableComponent)
+
+
+
                 } catch (e: Exception) {
                     Log.e("MainContent", "Error loading GLTF model", e)
                 }
             }
 
         }) {
-            Text(text = "MyButton1")
+            Text(text = "ActivitySpace")
         }
         Button(onClick = {
-            Log.d("MainActivity","1")
+            Log.d("MainActivity", "1")
 
-            val THREED_MODEL_URL = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF/FlightHelmet.gltf"
+            val THREED_MODEL_URL =
+                "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF/FlightHelmet.gltf"
             val MIME_TYPE = "model/gltf-binary"
             val sceneViewerIntent = Intent(Intent.ACTION_VIEW)
             val intentUri =
@@ -317,100 +403,85 @@ fun MainContent(session: Session, modifier: Modifier = Modifier, title: String) 
 
 
         Button(onClick = {
-            Log.d("MainActivity","1")
+            Log.d("MainActivity", "1")
 
             val preferenceResult = session.spatialEnvironment.setPassthroughOpacityPreference(0.8f)
 
-            if (preferenceResult ==  SpatialEnvironment.SetPassthroughOpacityPreferenceChangeApplied()) {
-                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangeApplied")
+            if (preferenceResult == SpatialEnvironment.SetPassthroughOpacityPreferenceChangeApplied()) {
+                Log.d("MainActivity", "SetPassthroughOpacityPreferenceChangeApplied")
 
             } else if (preferenceResult == SpatialEnvironment.SetPassthroughOpacityPreferenceChangePending()) {
-                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangePending")
+                Log.d("MainActivity", "SetPassthroughOpacityPreferenceChangePending")
 
             }
 
         }) {
             Text(text = "Passthrough")
         }
+        Button(onClick = {
+            Log.d("MainActivity", "1")
+            val activity = context as? Activity
+            PermissionHelper.requestPermission(activity!!,PermissionHelper.SCENE_UNDERSTANDING_PERMISSION, 0)        }) {
+            Text(text = "Ask Permission")
+        }
 
-        ObjectInAVolume(session,true)
+      //  ObjectInAVolume(session, true)
 
     }
 
 }
 
 @Composable
-fun SideContent(session: Session, modifier: Modifier = Modifier, title: String) {
-    var context= LocalContext.current
+fun RightContent(session: Session, modifier: Modifier = Modifier, title: String) {
+    var context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     Column() {
 
-        Box(modifier = Modifier.height(100.dp).width(100.dp)) {
+        Box(modifier = Modifier
+            .height(100.dp)
+            .width(100.dp)) {
 
-        Text(text = title, modifier = modifier, color = Color.White)
+            Text(text = title, modifier = modifier, color = Color.White)
         }
 
         Button(onClick = {
 
-            Log.d("MainActivity","1")
-            coroutineScope.launch {
-                try {
-                    val model = withContext(Dispatchers.Main) {
-                        Log.d("MainActivity","2")
-                        session.createGltfResourceAsync("models/hero_baymax_-_fortnite_skin.glb")
-                    }
-                    Log.d("MainActivity","3")
-                    val gltfEntity = session.createGltfEntity(model.get())
-                    val newPosition = Vector3(0f, 0f, -2f)
-                    val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
-                    gltfEntity.setHidden(false)
-                    gltfEntity.setScale(2f)
-                    gltfEntity.setPose(Pose(newPosition, newOrientation))
-                    gltfEntity.addChild(gltfEntity)
-                    Log.d("MainActivity","4")
-                } catch (e: Exception) {
-                    Log.e("MainContent", "Error loading GLTF model", e)
-                }
-            }
+            Log.d("MainActivity", "1")
+
 
         }) {
             Text(text = "MyButton1")
         }
-        Button(onClick = {
-            Log.d("MainActivity","1")
 
-            val THREED_MODEL_URL = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF/FlightHelmet.gltf"
-            val MIME_TYPE = "model/gltf-binary"
-            val sceneViewerIntent = Intent(Intent.ACTION_VIEW)
-            val intentUri =
-                Uri.parse("https://arvr.google.com/scene-viewer/1.2")
-                    .buildUpon()
-                    .appendQueryParameter("file", THREED_MODEL_URL)
-                    .build()
-            sceneViewerIntent.setDataAndType(intentUri, MIME_TYPE)
-            context.startActivity(sceneViewerIntent)
+
+
+
+    }
+
+}
+@Composable
+fun LeftContent(session: Session, modifier: Modifier = Modifier, title: String) {
+    var context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    Column() {
+
+        Box(modifier = Modifier
+            .height(100.dp)
+            .width(100.dp)) {
+
+            Text(text = title, modifier = modifier, color = Color.White)
+        }
+
+        Button(onClick = {
+
+            Log.d("MainActivity", "1")
+
 
         }) {
-            Text(text = "Scene Viewer")
+            Text(text = "MyButton1")
         }
 
 
-        Button(onClick = {
-            Log.d("MainActivity","1")
-
-            val preferenceResult = session.spatialEnvironment.setPassthroughOpacityPreference(0.8f)
-
-            if (preferenceResult ==  SpatialEnvironment.SetPassthroughOpacityPreferenceChangeApplied()) {
-                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangeApplied")
-
-            } else if (preferenceResult == SpatialEnvironment.SetPassthroughOpacityPreferenceChangePending()) {
-                Log.d("MainActivity","SetPassthroughOpacityPreferenceChangePending")
-
-            }
-
-        }) {
-            Text(text = "Passthrough")
-        }
 
 
     }
@@ -418,42 +489,69 @@ fun SideContent(session: Session, modifier: Modifier = Modifier, title: String) 
 }
 
 @Composable
-fun ObjectInAVolume(session: Session,show3DObject: Boolean) {
+fun ObjectInAVolume(session: Session, show3DObject: Boolean) {
     val xrCoreSession = checkNotNull(LocalSession.current)
     val scope = rememberCoroutineScope()
 
-        Subspace {
-            Volume(
-                modifier = SubspaceModifier
-                    .offset(100.dp, 100.dp, 100.dp)
-                    .scale(1.2f) // Scale to 120% of the size
+    Subspace {
+        Volume(
+            modifier = SubspaceModifier
+                .offset(100.dp, 100.dp, 100.dp)
+                .scale(1.2f) // Scale to 120% of the size
 
-            ) { parent ->
-                scope.launch {
-                    try {
+        ) { parent ->
+            scope.launch {
+                try {
 
-                            Log.d("MainActivity","2")
-                        xrCoreSession.createGltfResourceAsync("models/glTF/FlightHelmet.gltf").let {
-                                val model=it.get();
-                                Log.d("MainActivity","3")
-                                val gltfEntity = xrCoreSession.createGltfEntity(model)
-                                val newPosition = Vector3(0f, 0f, -2f)
-                                val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
-                                gltfEntity.setHidden(false)
-                                gltfEntity.setScale(2f)
-                                gltfEntity.setPose(Pose(newPosition, newOrientation))
-                                gltfEntity.addChild(gltfEntity)
-                                Log.d("MainActivity","4")
-                            }
-
-
-                    } catch (e: Exception) {
-                        Log.e("MainContent", "Error loading GLTF model", e)
+                    Log.d("MainActivity", "2")
+                    xrCoreSession.createGltfResourceAsync("models/glTF/FlightHelmet.gltf").let {
+                        val model = it.get();
+                        Log.d("MainActivity", "3")
+                        val gltfEntity = xrCoreSession.createGltfEntity(model)
+                        val newPosition = Vector3(0f, 0f, -2f)
+                        val newOrientation = Quaternion.fromEulerAngles(0f, 0f, 180f)
+                        gltfEntity.setHidden(false)
+                        gltfEntity.setScale(2f)
+                        gltfEntity.setPose(Pose(newPosition, newOrientation))
+                        gltfEntity.addChild(gltfEntity)
+                        Log.d("MainActivity", "4")
                     }
+
+
+                } catch (e: Exception) {
+                    Log.e("MainContent", "Error loading GLTF model", e)
                 }
             }
         }
+    }
 
+}
+
+
+@Composable
+fun MyNavigationRail() {
+    var selectedItem by remember { mutableStateOf(0) }
+
+    NavigationRail {
+        NavigationRailItem(
+            icon = { Icon(ImageVector.vectorResource(id = android.R.drawable.ic_delete), contentDescription = "Home") },
+            label = { Text("Home") },
+            selected = selectedItem == 0,
+            onClick = { selectedItem = 0 }
+        )
+        NavigationRailItem(
+            icon = { Icon(ImageVector.vectorResource(id =  android.R.drawable.ic_menu_search), contentDescription = "Search") },
+            label = { Text("Search") },
+            selected = selectedItem == 1,
+            onClick = { selectedItem = 1 }
+        )
+        NavigationRailItem(
+            icon = { Icon(ImageVector.vectorResource(id =  android.R.drawable.sym_action_email), contentDescription = "Settings") },
+            label = { Text("Settings") },
+            selected = selectedItem == 2,
+            onClick = { selectedItem = 2 }
+        )
+    }
 }
 
 @Composable
@@ -479,9 +577,9 @@ fun HomeSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
 @PreviewLightDark
 @Composable
 fun My2dContentPreview() {
-   /* XRApplicationTheme {
-        My2DContent(session = Session, onRequestFullSpaceMode = {})
-    }*/
+    /* XRApplicationTheme {
+         My2DContent(session = Session, onRequestFullSpaceMode = {})
+     }*/
 }
 
 @Preview(showBackground = true)
